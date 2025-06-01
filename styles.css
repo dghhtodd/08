@@ -1,0 +1,929 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* 导航栏 */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #4a6fa5;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.logo i {
+    margin-right: 10px;
+    font-size: 1.8rem;
+}
+
+.nav-buttons button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    margin-left: 15px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.nav-buttons button:hover {
+    transform: scale(1.1);
+}
+
+/* 主容器 */
+.main-container {
+    display: flex;
+    height: calc(100vh - 60px);
+}
+
+/* 侧边栏 */
+.sidebar {
+    width: 300px;
+    background-color: #fff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s;
+}
+
+/* 搜索框 */
+.search-container {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 20px;
+    padding: 8px 15px;
+}
+
+.search-box i {
+    color: #888;
+    margin-right: 10px;
+}
+
+.search-box input {
+    border: none;
+    background: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+/* 笔记列表 */
+.notes-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* 修改笔记项样式，添加相对定位 */
+.note-item {
+    position: relative;
+    padding: 12px 15px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.note-item:hover {
+    background-color: #f0f0f0;
+}
+
+.note-item.active {
+    background-color: #e6f0ff;
+    border-left: 3px solid #4a6fa5;
+}
+
+.note-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.note-title i {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.note-preview {
+    font-size: 0.85rem;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.note-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 5px;
+}
+
+/* 编辑器容器 */
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+}
+
+/* 工具栏 */
+.toolbar {
+    display: flex;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    background-color: #f9f9f9;
+    flex-wrap: wrap;
+}
+
+.toolbar-group {
+    display: flex;
+    margin-right: 15px;
+    border-right: 1px solid #eee;
+    padding-right: 15px;
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+}
+
+.toolbar button {
+    background: none;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    margin-right: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.toolbar button:hover {
+    background-color: #e6e6e6;
+}
+
+.toolbar button.active {
+    background-color: #d9d9d9;
+}
+
+/* 编辑器 */
+.editor {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    outline: none;
+}
+
+.editor h1, .editor h2, .editor h3, .editor h4, .editor h5, .editor h6 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.editor p {
+    margin-bottom: 10px;
+}
+
+.editor ul, .editor ol {
+    margin-bottom: 10px;
+    padding-left: 20px;
+}
+
+.editor blockquote {
+    border-left: 3px solid #ddd;
+    padding-left: 15px;
+    color: #666;
+    margin: 10px 0;
+}
+
+.editor img {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+}
+
+/* 状态栏 */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px;
+    background-color: #f9f9f9;
+    border-top: 1px solid #eee;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* 媒体查询 */
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: 40%;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .editor-container {
+        height: 60%;
+    }
+}
+
+/* 暗色模式 */
+body.dark-mode {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+}
+
+body.dark-mode .navbar {
+    background-color: #2c3e50;
+}
+
+body.dark-mode .sidebar {
+    background-color: #2a2a2a;
+    border-right-color: #444;
+}
+
+body.dark-mode .search-container {
+    border-bottom-color: #444;
+}
+
+body.dark-mode .search-box {
+    background-color: #333;
+}
+
+body.dark-mode .search-box i,
+body.dark-mode .search-box input {
+    color: #bbb;
+}
+
+body.dark-mode .note-item:hover {
+    background-color: #333;
+}
+
+body.dark-mode .note-item.active {
+    background-color: #2c3e50;
+    border-left-color: #6c8eb9;
+}
+
+body.dark-mode .note-title {
+    color: #f0f0f0;
+}
+
+body.dark-mode .note-preview {
+    color: #bbb;
+}
+
+body.dark-mode .note-meta {
+    color: #888;
+}
+
+body.dark-mode .editor-container {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .toolbar {
+    background-color: #333;
+    border-bottom-color: #444;
+}
+
+body.dark-mode .toolbar-group {
+    border-right-color: #444;
+}
+
+body.dark-mode .toolbar button {
+    color: #f0f0f0;
+}
+
+body.dark-mode .toolbar button:hover {
+    background-color: #444;
+}
+
+body.dark-mode .toolbar button.active {
+    background-color: #555;
+}
+
+body.dark-mode .editor h1,
+body.dark-mode .editor h2,
+body.dark-mode .editor h3,
+body.dark-mode .editor h4,
+body.dark-mode .editor h5,
+body.dark-mode .editor h6 {
+    color: #f0f0f0;
+}
+
+body.dark-mode .editor blockquote {
+    border-left-color: #555;
+    color: #bbb;
+}
+
+body.dark-mode .status-bar {
+    background-color: #333;
+    border-top-color: #444;
+    color: #bbb;
+}
+
+/* 模态框 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modal-header h2 {
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.close {
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.modal-body button {
+    background-color: #4a6fa5;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+.modal-body button:hover {
+    background-color: #3a5a80;
+}
+
+/* 暗色模式下的模态框 */
+body.dark-mode .modal-content {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .modal-header {
+    border-bottom-color: #444;
+}
+
+body.dark-mode .modal-header h2 {
+    color: #f0f0f0;
+}
+
+body.dark-mode .close {
+    color: #bbb;
+}
+
+body.dark-mode .close:hover {
+    color: #f0f0f0;
+}
+
+body.dark-mode .form-group label {
+    color: #bbb;
+}
+
+body.dark-mode .form-group input {
+    background-color: #333;
+    border-color: #444;
+    color: #f0f0f0;
+}
+
+/* 导出选项 */
+.export-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.export-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100px;
+}
+
+.export-option:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.export-option i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.export-option span {
+    font-size: 0.9rem;
+}
+
+/* 分享链接容器 */
+.share-link-container {
+    display: flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 5px;
+}
+
+#share-link {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#copy-link {
+    background: none;
+    border: none;
+    color: #4a6fa5;
+    cursor: pointer;
+    padding: 0 5px;
+    font-size: 1rem;
+}
+
+.share-tip {
+    margin-top: 15px;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* 暗色模式下的分享链接 */
+body.dark-mode .share-link-container {
+    background-color: #333;
+}
+
+body.dark-mode #share-link {
+    color: #f0f0f0;
+}
+
+body.dark-mode #copy-link {
+    color: #6c8eb9;
+}
+
+body.dark-mode .share-tip {
+    color: #aaa;
+}
+
+/* 暗色模式下的导出选项 */
+body.dark-mode .export-option {
+    border-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .export-option:hover {
+    background-color: #333;
+}
+
+/* 笔记操作按钮 */
+.note-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: none;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 4px;
+    padding: 2px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.note-item:hover .note-actions {
+    display: flex;
+}
+
+.note-action-btn {
+    background: none;
+    border: none;
+    font-size: 0.8rem;
+    padding: 3px 5px;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.2s;
+}
+
+.note-action-btn:hover {
+    color: #4a6fa5;
+}
+
+.rename-note {
+    margin-right: 5px;
+}
+
+.delete-note {
+    color: #e74c3c;
+}
+
+.delete-note:hover {
+    color: #c0392b;
+}
+
+/* 暗色模式下的笔记操作按钮 */
+body.dark-mode .note-actions {
+    background-color: rgba(51, 51, 51, 0.9);
+}
+
+body.dark-mode .note-action-btn {
+    color: #bbb;
+}
+
+body.dark-mode .note-action-btn:hover {
+    color: #6c8eb9;
+}
+
+body.dark-mode .delete-note {
+    color: #e74c3c;
+}
+
+body.dark-mode .delete-note:hover {
+    color: #c0392b;
+}
+
+/* 图片调整大小 */
+.resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #4a6fa5;
+    border-radius: 50%;
+    z-index: 100;
+}
+
+.resize-handle-nw {
+    top: -5px;
+    left: -5px;
+    cursor: nwse-resize;
+}
+
+.resize-handle-ne {
+    top: -5px;
+    right: -5px;
+    cursor: nesw-resize;
+}
+
+.resize-handle-sw {
+    bottom: -5px;
+    left: -5px;
+    cursor: nesw-resize;
+}
+
+.resize-handle-se {
+    bottom: -5px;
+    right: -5px;
+    cursor: nwse-resize;
+}
+
+/* 媒体元素 */
+.media-wrapper {
+    position: relative;
+    margin: 10px 0;
+    display: inline-block;
+}
+
+.media-wrapper img,
+.media-wrapper video,
+.media-wrapper audio {
+    max-width: 100%;
+}
+
+/* 文件附件 */
+.file-attachment {
+    display: flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+    transition: background-color 0.2s;
+}
+
+.file-attachment:hover {
+    background-color: #e6e6e6;
+}
+
+.file-attachment i {
+    font-size: 1.5rem;
+    margin-right: 10px;
+    color: #4a6fa5;
+}
+
+.file-info {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.file-meta {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.file-download {
+    background: none;
+    border: none;
+    color: #4a6fa5;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: color 0.2s;
+}
+
+.file-download:hover {
+    color: #3a5a80;
+}
+
+/* 暗色模式下的文件附件 */
+body.dark-mode .file-attachment {
+    background-color: #333;
+}
+
+body.dark-mode .file-attachment:hover {
+    background-color: #444;
+}
+
+body.dark-mode .file-meta {
+    color: #bbb;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* 加载器 */
+.loader {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(74, 111, 165, 0.3);
+    border-radius: 50%;
+    border-top-color: #4a6fa5;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 日历 */
+.calendar-container {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 300px;
+    z-index: 900;
+    display: none;
+    animation: slideIn 0.3s;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.calendar-title {
+    font-weight: 600;
+    color: #333;
+}
+
+.calendar-nav {
+    display: flex;
+}
+
+.calendar-nav button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.2s;
+    padding: 0 5px;
+}
+
+.calendar-nav button:hover {
+    color: #4a6fa5;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 10px;
+}
+
+.calendar-day {
+    text-align: center;
+    padding: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.calendar-day:hover {
+    background-color: #f0f0f0;
+}
+
+.calendar-day.today {
+    background-color: #e6f0ff;
+    font-weight: 600;
+}
+
+.calendar-day.has-notes {
+    color: #4a6fa5;
+    font-weight: 600;
+}
+
+.calendar-day.other-month {
+    color: #ccc;
+}
+
+.calendar-weekday {
+    text-align: center;
+    padding: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+}
+
+/* 暗色模式下的日历 */
+body.dark-mode .calendar-container {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .calendar-header {
+    border-bottom-color: #444;
+}
+
+body.dark-mode .calendar-title {
+    color: #f0f0f0;
+}
+
+body.dark-mode .calendar-nav button {
+    color: #bbb;
+}
+
+body.dark-mode .calendar-nav button:hover {
+    color: #6c8eb9;
+}
+
+body.dark-mode .calendar-day:hover {
+    background-color: #333;
+}
+
+body.dark-mode .calendar-day.today {
+    background-color: #2c3e50;
+}
+
+body.dark-mode .calendar-day.has-notes {
+    color: #6c8eb9;
+}
+
+body.dark-mode .calendar-day.other-month {
+    color: #666;
+}
+
+body.dark-mode .calendar-weekday {
+    color: #bbb;
+}
+
+/* 历史导航按钮 */
+.history-nav {
+    display: flex;
+    margin-right: 15px;
+}
+
+.history-nav button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 0 5px;
+}
+
+.history-nav button:hover {
+    color: #4a6fa5;
+}
+
+.history-nav button:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 暗色模式下的历史导航按钮 */
+body.dark-mode .history-nav button {
+    color: #bbb;
+}
+
+body.dark-mode .history-nav button:hover {
+    color: #6c8eb9;
+}
+
+body.dark-mode .history-nav button:disabled {
+    color: #666;
+}
