@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斜记本 (SlantNote) - 离线记事本</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.1/docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.1/turndown.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --danger-color: #ef4444;
+            --border-radius: 8px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            color: var(--dark-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 顶部导航栏 */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 100;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo i {
+            font-size: 1.8rem;
+        }
+        
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .nav-actions {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .btn i {
+            font-size: 1rem;
+        }
+        
+        /* 主容器 */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #eaeaea;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .sidebar-header h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .calendar-container {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            transition: all 0.3s ease;
+            max-height: 350px;
+            overflow: hidden;
+        }
+        
+        .calendar-container.collapsed {
+            max-height: 40px;
+            overflow: hidden;
+        }
+        
+        .calendar-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding-bottom: 10px;
+        }
+        
+        .calendar-toggle h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        
+        .calendar {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .calendar th, .calendar td {
+            text-align: center;
+            padding: 5px;
+            font-size: 0.85rem;
+        }
+        
+        .calendar th {
+            background-color: #e9ecef;
+        }
+        
+        .calendar td {
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .calendar td:hover {
+            background-color: #dee2e6;
+        }
+        
+        .calendar td.today {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .calendar td.has-note {
+            position: relative;
+        }
+        
+        .calendar td.has-note::after {
+            content: "";
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+        }
+        
+        .search-container {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-box input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            outline: none;
+        }
+        
+        .notes-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        
+        .note-item {
+            padding: 12px;
+            border-radius: var(--border-radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .note-item:hover {
+            background: #f0f7ff;
+        }
+        
+        .note-item.active {
+            background: #e6f0ff;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .note-title {
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 40px;
+        }
+        
+        .note-preview {
+            font-size: 0.85rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .note-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .note-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .note-item:hover .note-actions {
+            opacity: 1;
+        }
+        
+        .note-action-btn {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .note-action-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .note-action-btn.delete {
+            color: var(--danger-color);
+        }
+        
+        /* 编辑区域 */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: white;
+            border-radius: var(--border-radius);
+            margin: 1rem;
+            box-shadow: var(--shadow);
+        }
+        
+        .toolbar {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #f8f9fa;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            border-right: 1px solid #e0e0e0;
+            padding-right: 12px;
+            margin-right: 12px;
+        }
+        
+        .toolbar-group:last-child {
+            border-right: none;
+            margin-right: 0;
+        }
+        
+        .toolbar-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 1rem;
+        }
+        
+        .toolbar-btn:hover {
+            background: #e9ecef;
+            color: var(--primary-color);
+        }
+        
+        .toolbar-btn.active {
+            background: #e0e7ff;
+            color: var(--primary-color);
+        }
+        
+        .editor {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            outline: none;
+        }
+        
+        .editor:focus {
+            outline: none;
+        }
+        
+        .editor-footer {
+            padding: 1rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #666;
+            background: #f8f9fa;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 240px;
+            }
+            
+            .navbar {
+                padding: 1rem;
+            }
+            
+            .logo h1 {
+                font-size: 1.2rem;
+            }
+            
+            .btn span {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 200px;
+            }
+        }
+        
+        /* 加密锁图标 */
+        .locked {
+            position: relative;
+        }
+        
+        .locked::after {
+            content: "\f023";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 12px;
+            color: var(--warning-color);
+        }
+        
+        /* 暗色模式 */
+        .dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        
+        .dark-mode .sidebar,
+        .dark-mode .editor-container {
+            background-color: #1e1e1e;
+            border-color: #333;
+        }
+        
+        .dark-mode .search-box {
+            background: #2d2d2d;
+            border-color: #444;
+        }
+        
+        .dark-mode .toolbar,
+        .dark-mode .editor-footer {
+            background: #252526;
+            border-color: #333;
+        }
+        
+        .dark-mode .toolbar-btn {
+            color: #aaa;
+        }
+        
+        .dark-mode .toolbar-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+        
+        .dark-mode .note-item:hover {
+            background: #2a2d2e;
+        }
+        
+        .dark-mode .note-item.active {
+            background: #2c3e50;
+        }
+        
+        .dark-mode .calendar-container {
+            background: #252526;
+        }
+        
+        .dark-mode .calendar th {
+            background-color: #333;
+        }
+        
+        .dark-mode .calendar td:hover {
+            background-color: #444;
+        }
+        
+        .dark-mode .calendar td.today {
+            background-color: var(--primary-color);
+        }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            position: relative;
+        }
+        
+        .dark-mode .modal-content {
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+        
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            background: #f8f9fa;
+            font-size: 1rem;
+        }
+        
+        .dark-mode .form-control {
+            background: #333;
+            border-color: #444;
+            color: #e0e0e0;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+        
+        .btn-secondary {
+            background: #e9ecef;
+            color: var(--dark-color);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .dark-mode .btn-secondary {
+            background: #444;
+            color: #e0e0e0;
+        }
+        
+        .btn-secondary:hover {
+            background: #dde0e4;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        /* 图片尺寸调整 */
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: nwse-resize;
+            z-index: 10;
+        }
+        
+        /* 多媒体元素样式 */
+        .media-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .media-container img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .media-container video {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+        }
+        
+        .audio-player {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .file-attachment {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+            margin: 10px 0;
+        }
+        
+        .file-attachment i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .file-info {
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 500;
+        }
+        
+        .file-size {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .download-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        /* 加载动画 */
+        .loader {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 导出选项 */
+        .export-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .export-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            background: #f0f4ff;
+            border: 1px solid #d0d7ff;
+            border-radius: var(--border-radius);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .export-btn:hover {
+            background: #e0e7ff;
+            border-color: var(--primary-color);
+        }
+        
+        .export-btn i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--primary-color);
+        }
+        
+        .export-btn span {
+            display: block;
+            font-size: 14px;
+        }
+        
+        /* 导航按钮 */
+        .nav-history {
+            display: flex;
+            gap: 8px;
+            margin-right: 16px;
+        }
+        
+        .history-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: var(--transition);
+        }
+        
+        .history-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .history-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 分享链接样式 */
+        .share-link-container {
+            display: flex;
+            margin-top: 15px;
+        }
+        
+        .share-link {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius) 0 0 var(--border-radius);
+            background: #f8f9fa;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .copy-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-book"></i>
+            <h1>斜记本 (SlantNote)</h1>
+        </div>
+        <div class="nav-actions">
+            <div class="nav-history">
+                <button class="history-btn" id="back-btn" title="后退">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <button class="history-btn" id="forward-btn" title="前进">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            <button class="btn" id="new-note-btn">
+                <i class="fas fa-plus"></i>
+                <span>新建笔记</span>
+            </button>
+            <button class="btn" id="save-btn">
+                <i class="fas fa-save"></i>
+                <span>保存</span>
+            </button>
+            <button class="btn" id="export-btn">
+                <i class="fas fa-file-export"></i>
+                <span>导出</span>
+            </button>
+            <button class="btn" id="share-btn">
+                <i class="fas fa-share-alt"></i>
+                <span>分享</span>
+            </button>
+            <button class="btn" id="theme-toggle">
+                <i class="fas fa-moon"></i>
+                <span>暗色模式</span>
+            </button>
+        </div>
+    </nav>
+    
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>我的笔记</h2>
+                <button class="btn" id="toggle-sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <div class="calendar-container">
+                <div class="calendar-toggle" id="calendar-toggle">
+                    <h3>日历视图</h3>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <table class="calendar" id="calendar">
+                    <thead>
+                        <tr>
+                            <th>日</th>
+                            <th>一</th>
+                            <th>二</th>
+                            <th>三</th>
+                            <th>四</th>
+                            <th>五</th>
+                            <th>六</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendar-body">
+                        <!-- 日历内容将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="搜索笔记...">
+                </div>
+            </div>
+            <div class="notes-list" id="notes-list">
+                <!-- 笔记列表将通过JS动态生成 -->
+                <div class="loader">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- 编辑区域 -->
+        <main class="editor-container">
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="bold-btn" title="粗体 (Ctrl+B)"><i class="fas fa-bold"></i></button>
+                    <button class="toolbar-btn" id="italic-btn" title="斜体 (Ctrl+I)"><i class="fas fa-italic"></i></button>
+                    <button class="toolbar-btn" id="underline-btn" title="下划线 (Ctrl+U)"><i class="fas fa-underline"></i></button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="align-left-btn" title="左对齐"><i class="fas fa-align-left"></i></button>
+                    <button class="toolbar-btn" id="align-center-btn" title="居中"><i class="fas fa-align-center"></i></button>
+                    <button class="toolbar-btn" id="align-right-btn" title="右对齐"><i class="fas fa-align-right"></i></button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="ordered-list-btn" title="有序列表"><i class="fas fa-list-ol"></i></button>
+                    <button class="toolbar-btn" id="unordered-list-btn" title="无序列表"><i class="fas fa-list-ul"></i></button>
+                </div>
+                <div class="toolbar-group">
+                    <div class="toolbar-btn dropdown" id="insert-media" title="插入媒体">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                    <button class="toolbar-btn" id="lock-btn" title="加密笔记"><i class="fas fa-lock"></i></button>
+                </div>
+            </div>
+            
+            <div class="editor" id="editor" contenteditable="true">
+                <!-- 富文本编辑区域 -->
+                <h1>欢迎使用斜记本 (SlantNote)</h1>
+                <p>这是一个完全离线的记事本应用，您的所有数据都保存在本地设备中。</p>
+                <p>点击左侧笔记列表或创建新笔记开始使用。</p>
+                <p>试试这些新功能：</p>
+                <ul>
+                    <li><strong>笔记删除</strong>：轻松管理不需要的笔记</li>
+                    <li><strong>日历视图</strong>：按日期组织您的笔记</li>
+                    <li><strong>导航历史</strong>：前进/后退按钮方便浏览</li>
+                    <li><strong>分享功能</strong>：生成笔记链接与他人分享</li>
+                    <li><strong>扩展导出</strong>：新增Markdown导出选项</li>
+                    <li><strong>文件附件</strong>：支持插入多种文件类型</li>
+                </ul>
+            </div>
+            
+            <div class="editor-footer">
+                <div class="word-count">字数: 0 | 字符: 0</div>
+                <div class="last-saved">最后保存: 刚刚</div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 模态框 -->
+    <div class="modal" id="password-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-password-modal">&times;</button>
+            <div class="modal-header">
+                <h2>笔记加密</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="note-password">设置密码</label>
+                    <input type="password" id="note-password" class="form-control" placeholder="输入密码">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">确认密码</label>
+                    <input type="password" id="confirm-password" class="form-control" placeholder="再次输入密码">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancel-password">取消</button>
+                <button class="btn-primary" id="save-password">保存密码</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="unlock-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-unlock-modal">&times;</button>
+            <div class="modal-header">
+                <h2>解锁笔记</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="unlock-password">输入密码</label>
+                    <input type="password" id="unlock-password" class="form-control" placeholder="输入密码解锁笔记">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancel-unlock">取消</button>
+                <button class="btn-primary" id="unlock-note">解锁</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-export-modal">&times;</button>
+            <div class="modal-header">
+                <h2>导出笔记</h2>
+            </div>
+            <div class="modal-body">
+                <p>选择导出格式：</p>
+                <div class="export-options">
+                    <div class="export-btn" id="export-pdf">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>PDF格式</span>
+                    </div>
+                    <div class="export-btn" id="export-word">
+                        <i class="fas fa-file-word"></i>
+                        <span>Word格式</span>
+                    </div>
+                    <div class="export-btn" id="export-html">
+                        <i class="fas fa-code"></i>
+                        <span>HTML格式</span>
+                    </div>
+                    <div class="export-btn" id="export-txt">
+                        <i class="fas fa-file-alt"></i>
+                        <span>纯文本</span>
+                    </div>
+                    <div class="export-btn" id="export-md">
+                        <i class="fab fa-markdown"></i>
+                        <span>Markdown</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="share-modal">
+        <div class="modal-content">
+            <button class="close-modal" id="close-share-modal">&times;</button>
+            <div class="modal-header">
+                <h2>分享笔记</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="share-title">笔记标题</label>
+                    <input type="text" id="share-title" class="form-control" value="项目计划">
+                </div>
+                <div class="form-group">
+                    <label>分享链接</label>
+                    <div class="share-link-container">
+                        <div class="share-link" id="share-link">https://slantnote.com/share/abc123</div>
+                        <button class="copy-btn" id="copy-link">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancel-share">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <input type="file" id="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none;">
+    
+    <script>
+        // 笔记数据
+        let notes = [
+            {
+                id: 1,
+                title: "项目计划",
+                content: "<h2>项目目标</h2><p>在2023年底前完成斜记本开发</p><ul><li>核心功能开发</li><li>测试与优化</li><li>文档编写</li></ul>",
+                createdAt: "2023-06-01 09:30",
+                updatedAt: "2023-06-15 14:22",
+                locked: false,
+                password: "",
+                date: "2023-06-01"
+            },
+            {
+                id: 2,
+                title: "会议记录",
+                content: "<h3>设计评审会议</h3><p><strong>参会人员：</strong>张工、李工、王工</p><p><strong>讨论要点：</strong></p><ol><li>UI界面优化方案</li><li>移动端适配问题</li><li>性能测试计划</li></ol>",
+                createdAt: "2023-06-10 10:15",
+                updatedAt: "2023-06-12 16:45",
+                locked: false,
+                password: "",
+                date: "2023-06-10"
+            },
+            {
+                id: 3,
+                title: "学习笔记",
+                content: "<h1>JavaScript高级概念</h1><p><i>闭包、原型链、异步编程</i></p><p>闭包是函数和声明该函数的词法环境的组合</p>",
+                createdAt: "2023-05-28 15:40",
+                updatedAt: "2023-06-05 11:20",
+                locked: true,
+                password: CryptoJS.SHA256("123456").toString(),
+                date: "2023-05-28"
+            },
+            {
+                id: 4,
+                title: "旅行计划",
+                content: "<h2>七月旅行计划</h2><p><strong>目的地：</strong>云南大理</p><p><strong>行程安排：</strong></p><ul><li>第一天：抵达大理，入住酒店</li><li>第二天：环洱海骑行</li><li>第三天：苍山徒步</li></ul>",
+                createdAt: "2023-06-05 08:20",
+                updatedAt: "2023-06-14 17:30",
+                locked: false,
+                password: "",
+                date: "2023-06-05"
+            }
+        ];
+        
+        // DOM元素
+        const notesList = document.getElementById('notes-list');
+        const editor = document.getElementById('editor');
+        const newNoteBtn = document.getElementById('new-note-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const shareBtn = document.getElementById('share-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const searchInput = document.getElementById('search-input');
+        const backBtn = document.getElementById('back-btn');
+        const forwardBtn = document.getElementById('forward-btn');
+        
+        // 模态框元素
+        const passwordModal = document.getElementById('password-modal');
+        const unlockModal = document.getElementById('unlock-modal');
+        const exportModal = document.getElementById('export-modal');
+        const shareModal = document.getElementById('share-modal');
+        
+        // 当前选中的笔记
+        let currentNote = null;
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        
+        // 导航历史
+        let historyStack = [];
+        let historyIndex = -1;
+        
+        // 初始化应用
+        function initApp() {
+            renderNotesList();
+            setupEventListeners();
+            updateWordCount();
+            generateCalendar();
+            
+            // 模拟加载延迟 - 修复了无法读取 null 属性错误
+            setTimeout(() => {
+                const loader = document.querySelector('.loader');
+                if (loader) {
+                    loader.style.display = 'none';
+                }
+            }, 800);
+        }
+        
+        // 渲染笔记列表
+        function renderNotesList(filteredNotes = null) {
+            notesList.innerHTML = '';
+            
+            const notesToRender = filteredNotes || notes;
+            
+            notesToRender.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item fade-in';
+                if (note.locked) noteElement.classList.add('locked');
+                
+                // 提取纯文本预览（去掉HTML标签）
+                const previewText = note.content.replace(/<[^>]*>/g, '').substring(0, 60) + '...';
+                
+                noteElement.innerHTML = `
+                    <div class="note-title" data-note-id="${note.id}">${note.title}</div>
+                    <div class="note-preview">${previewText}</div>
+                    <div class="note-meta">
+                        <span>${formatDate(note.updatedAt)}</span>
+                        <span>${note.locked ? '<i class="fas fa-lock"></i>' : ''}</span>
+                    </div>
+                    <div class="note-actions">
+                        <button class="note-action-btn edit-title" title="重命名">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="note-action-btn delete" title="删除笔记">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                noteElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.note-action-btn')) {
+                        selectNote(note);
+                    }
+                });
+                
+                // 添加重命名功能
+                const editBtn = noteElement.querySelector('.edit-title');
+                editBtn.addEventListener('click', () => {
+                    renameNote(note);
+                });
+                
+                // 添加删除功能
+                const deleteBtn = noteElement.querySelector('.delete');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteNote(note);
+                });
+                
+                notesList.appendChild(noteElement);
+            });
+        }
+        
+        // 选择笔记
+        function selectNote(note) {
+            if (note.locked && note.password) {
+                currentNote = note;
+                showUnlockModal();
+                return;
+            }
+            
+            // 添加到历史记录
+            addToHistory(note);
+            
+            currentNote = note;
+            editor.innerHTML = note.content;
+            
+            // 更新活动状态 - 修复了 notesToRender 未定义错误
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+                const noteId = item.querySelector('.note-title').dataset.noteId;
+                if (parseInt(noteId) === note.id) {
+                    item.classList.add('active');
+                }
+            });
+            
+            updateWordCount();
+        }
+        
+        // 添加到历史记录
+        function addToHistory(note) {
+            // 如果当前在历史记录中间，则移除之后的所有记录
+            if (historyIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyIndex + 1);
+            }
+            
+            historyStack.push(note);
+            historyIndex = historyStack.length - 1;
+            updateHistoryButtons();
+        }
+        
+        // 导航历史 - 后退
+        function navigateBack() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const note = historyStack[historyIndex];
+                openNoteFromHistory(note);
+            }
+        }
+        
+        // 导航历史 - 前进
+        function navigateForward() {
+            if (historyIndex < historyStack.length - 1) {
+                historyIndex++;
+                const note = historyStack[historyIndex];
+                openNoteFromHistory(note);
+            }
+        }
+        
+        // 从历史记录打开笔记
+        function openNoteFromHistory(note) {
+            currentNote = note;
+            editor.innerHTML = note.content;
+            
+            // 更新活动状态
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+                const noteId = item.querySelector('.note-title').dataset.noteId;
+                if (parseInt(noteId) === note.id) {
+                    item.classList.add('active');
+                }
+            });
+            
+            updateWordCount();
+            updateHistoryButtons();
+        }
+        
+        // 更新导航按钮状态
+        function updateHistoryButtons() {
+            backBtn.disabled = historyIndex <= 0;
+            forwardBtn.disabled = historyIndex >= historyStack.length - 1;
+        }
+        
+        // 重命名笔记
+        function renameNote(note) {
+            const titleElement = document.querySelector(`.note-title[data-note-id="${note.id}"]`);
+            const originalTitle = titleElement.textContent;
+            
+            titleElement.contentEditable = true;
+            titleElement.focus();
+            
+            // 选择文本内容
+            const range = document.createRange();
+            range.selectNodeContents(titleElement);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            // 保存编辑
+            const saveEdit = () => {
+                titleElement.contentEditable = false;
+                const newTitle = titleElement.textContent.trim() || originalTitle;
+                note.title = newTitle;
+                renderNotesList();
+                simulateSave();
+            };
+            
+            // 按键事件
+            titleElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    titleElement.textContent = originalTitle;
+                    titleElement.contentEditable = false;
+                }
+            });
+            
+            // 失去焦点事件
+            titleElement.addEventListener('blur', () => {
+                saveEdit();
+            });
+        }
+        
+        // 删除笔记
+        function deleteNote(note) {
+            if (confirm(`确定要删除笔记 "${note.title}" 吗？此操作无法撤销。`)) {
+                const index = notes.findIndex(n => n.id === note.id);
+                if (index !== -1) {
+                    notes.splice(index, 1);
+                    renderNotesList();
+                    
+                    // 如果删除的是当前笔记，清空编辑器
+                    if (currentNote && currentNote.id === note.id) {
+                        currentNote = null;
+                        editor.innerHTML = '<p>请选择或创建新笔记</p>';
+                        updateWordCount();
+                    }
+                    
+                    simulateSave();
+                }
+            }
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 新建笔记
+            newNoteBtn.addEventListener('click', () => {
+                const newNote = {
+                    id: Date.now(),
+                    title: '新笔记',
+                    content: '<p>开始记录你的想法...</p>',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    locked: false,
+                    password: "",
+                    date: new Date().toISOString().split('T')[0]
+                };
+                
+                notes.unshift(newNote);
+                renderNotesList();
+                selectNote(newNote);
+                simulateSave();
+            });
+            
+            // 保存笔记
+            saveBtn.addEventListener('click', () => {
+                if (currentNote) {
+                    saveCurrentNote();
+                }
+            });
+            
+            // 自动保存
+            editor.addEventListener('input', () => {
+                debounceSave();
+                updateWordCount();
+            });
+            
+            // 主题切换
+            themeToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                const icon = themeToggle.querySelector('i');
+                const text = themeToggle.querySelector('span');
+                
+                if (document.body.classList.contains('dark-mode')) {
+                    icon.classList.replace('fa-moon', 'fa-sun');
+                    text.textContent = '亮色模式';
+                } else {
+                    icon.classList.replace('fa-sun', 'fa-moon');
+                    text.textContent = '暗色模式';
+                }
+            });
+            
+            // 对齐功能
+            document.getElementById('align-left-btn').addEventListener('click', () => {
+                document.execCommand('justifyLeft', false, null);
+            });
+            
+            document.getElementById('align-center-btn').addEventListener('click', () => {
+                document.execCommand('justifyCenter', false, null);
+            });
+            
+            document.getElementById('align-right-btn').addEventListener('click', () => {
+                document.execCommand('justifyRight', false, null);
+            });
+            
+            // 列表功能
+            document.getElementById('ordered-list-btn').addEventListener('click', () => {
+                document.execCommand('insertOrderedList', false, null);
+            });
+            
+            document.getElementById('unordered-list-btn').addEventListener('click', () => {
+                document.execCommand('insertUnorderedList', false, null);
+            });
+            
+            // 工具栏按钮事件
+            document.getElementById('bold-btn').addEventListener('click', () => {
+                document.execCommand('bold', false, null);
+            });
+            
+            document.getElementById('italic-btn').addEventListener('click', () => {
+                document.execCommand('italic', false, null);
+            });
+            
+            document.getElementById('underline-btn').addEventListener('click', () => {
+                document.execCommand('underline', false, null);
+            });
+            
+            document.getElementById('lock-btn').addEventListener('click', () => {
+                if (currentNote) {
+                    showPasswordModal();
+                }
+            });
+            
+            // 媒体插入
+            document.getElementById('insert-media').addEventListener('click', () => {
+                document.getElementById('file-input').click();
+            });
+            
+            document.getElementById('file-input').addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    if (file.type.match('image.*')) {
+                        insertImage(file);
+                    } else if (file.type.match('video.*')) {
+                        insertVideo(file);
+                    } else if (file.type.match('audio.*')) {
+                        insertAudio(file);
+                    } else {
+                        insertFileAttachment(file);
+                    }
+                });
+            });
+            
+            // 导出功能
+            exportBtn.addEventListener('click', () => {
+                if (currentNote) {
+                    showExportModal();
+                }
+            });
+            
+            // 分享功能
+            shareBtn.addEventListener('click', () => {
+                if (currentNote) {
+                    showShareModal();
+                }
+            });
+            
+            // 搜索功能
+            searchInput.addEventListener('input', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                if (searchTerm.trim() === '') {
+                    renderNotesList();
+                    return;
+                }
+                
+                const filteredNotes = notes.filter(note => {
+                    const titleMatch = note.title.toLowerCase().includes(searchTerm);
+                    const contentMatch = note.content.toLowerCase().includes(searchTerm);
+                    return titleMatch || contentMatch;
+                });
+                
+                renderNotesList(filteredNotes);
+            });
+            
+            // 密码模态框事件
+            document.getElementById('save-password').addEventListener('click', setNotePassword);
+            document.getElementById('cancel-password').addEventListener('click', closePasswordModal);
+            document.getElementById('close-password-modal').addEventListener('click', closePasswordModal);
+            
+            // 解锁模态框事件
+            document.getElementById('unlock-note').addEventListener('click', unlockNote);
+            document.getElementById('cancel-unlock').addEventListener('click', closeUnlockModal);
+            document.getElementById('close-unlock-modal').addEventListener('click', closeUnlockModal);
+            
+            // 导出功能事件
+            document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+            document.getElementById('export-word').addEventListener('click', exportToWord);
+            document.getElementById('export-html').addEventListener('click', exportToHTML);
+            document.getElementById('export-txt').addEventListener('click', exportToTXT);
+            document.getElementById('export-md').addEventListener('click', exportToMD);
+            document.getElementById('close-export-modal').addEventListener('click', closeExportModal);
+            
+            // 分享功能事件
+            document.getElementById('copy-link').addEventListener('click', copyShareLink);
+            document.getElementById('cancel-share').addEventListener('click', closeShareModal);
+            document.getElementById('close-share-modal').addEventListener('click', closeShareModal);
+            
+            // 导航历史按钮
+            backBtn.addEventListener('click', navigateBack);
+            forwardBtn.addEventListener('click', navigateForward);
+            
+            // 日历折叠/展开
+            document.getElementById('calendar-toggle').addEventListener('click', toggleCalendar);
+            
+            // 日历日期选择
+            document.getElementById('calendar-body').addEventListener('click', handleCalendarClick);
+            
+            // 快捷键支持
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+S 保存
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    saveBtn.click();
+                }
+                
+                // Ctrl+B 加粗
+                if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                    e.preventDefault();
+                    document.execCommand('bold', false, null);
+                }
+                
+                // Ctrl+I 斜体
+                if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+                    e.preventDefault();
+                    document.execCommand('italic', false, null);
+                }
+                
+                // Ctrl+U 下划线
+                if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+                    e.preventDefault();
+                    document.execCommand('underline', false, null);
+                }
+            });
+        }
+        
+        // 保存当前笔记
+        function saveCurrentNote() {
+            currentNote.content = editor.innerHTML;
+            currentNote.updatedAt = new Date().toISOString();
+            currentNote.title = extractTitleFromContent(currentNote.content);
+            renderNotesList();
+            simulateSave();
+        }
+        
+        // 模拟保存操作
+        function simulateSave() {
+            const lastSaved = document.querySelector('.last-saved');
+            lastSaved.textContent = `最后保存: ${new Date().toLocaleTimeString()}`;
+            
+            // 显示保存动画
+            const saveIcon = saveBtn.querySelector('i');
+            saveIcon.classList.replace('fa-save', 'fa-check');
+            
+            setTimeout(() => {
+                saveIcon.classList.replace('fa-check', 'fa-save');
+            }, 1500);
+        }
+        
+        // 防抖保存
+        let saveTimeout;
+        function debounceSave() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                if (currentNote) {
+                    saveCurrentNote();
+                }
+            }, 2000);
+        }
+        
+        // 更新字数统计
+        function updateWordCount() {
+            const text = editor.innerText || '';
+            const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+            const charCount = text.length;
+            document.querySelector('.word-count').textContent = `字数: ${wordCount} | 字符: ${charCount}`;
+        }
+        
+        // 从内容中提取标题
+        function extractTitleFromContent(content) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 尝试获取第一个标题
+            const heading = tempDiv.querySelector('h1, h2, h3, h4, h5, h6');
+            if (heading && heading.textContent.trim() !== '') {
+                return heading.textContent.substring(0, 30);
+            }
+            
+            // 尝试获取第一段文字
+            const firstParagraph = tempDiv.querySelector('p');
+            if (firstParagraph && firstParagraph.textContent.trim() !== '') {
+                return firstParagraph.textContent.substring(0, 30);
+            }
+            
+            return '新笔记';
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                return '今天';
+            } else if (diffDays === 1) {
+                return '昨天';
+            } else if (diffDays < 7) {
+                return `${diffDays}天前`;
+            }
+            
+            return date.toLocaleDateString();
+        }
+        
+        // 插入图片
+        function insertImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                
+                // 创建图片容器
+                const container = document.createElement('div');
+                container.className = 'media-container';
+                container.appendChild(img);
+                
+                // 插入到编辑器
+                const selection = window.getSelection();
+                const range = selection.getRangeAt(0);
+                range.insertNode(container);
+                
+                // 添加调整大小的把手
+                addResizeHandle(container, img);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 插入视频
+        function insertVideo(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const video = document.createElement('video');
+                video.src = e.target.result;
+                video.controls = true;
+                video.style.maxWidth = '100%';
+                video.style.maxHeight = '400px';
+                
+                // 创建视频容器
+                const container = document.createElement('div');
+                container.className = 'media-container';
+                container.appendChild(video);
+                
+                // 插入到编辑器
+                const selection = window.getSelection();
+                const range = selection.getRangeAt(0);
+                range.insertNode(container);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 插入音频
+        function insertAudio(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const audio = document.createElement('audio');
+                audio.src = e.target.result;
+                audio.controls = true;
+                audio.className = 'audio-player';
+                
+                const container = document.createElement('div');
+                container.appendChild(audio);
+                
+                // 插入到编辑器
+                const selection = window.getSelection();
+                const range = selection.getRangeAt(0);
+                range.insertNode(container);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 插入文件附件
+        function insertFileAttachment(file) {
+            const fileSize = formatFileSize(file.size);
+            
+            const attachment = document.createElement('div');
+            attachment.className = 'file-attachment';
+            attachment.innerHTML = `
+                <i class="fas fa-file"></i>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+                <button class="download-btn" title="下载文件">
+                    <i class="fas fa-download"></i>
+                </button>
+            `;
+            
+            // 下载功能
+            const downloadBtn = attachment.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', () => {
+                const url = URL.createObjectURL(file);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            
+            // 插入到编辑器
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            range.insertNode(attachment);
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 添加调整大小的把手
+        function addResizeHandle(container, img) {
+            const handle = document.createElement('div');
+            handle.className = 'resize-handle';
+            handle.style.position = 'absolute';
+            handle.style.bottom = '0';
+            handle.style.right = '0';
+            container.style.display = 'inline-block';
+            container.style.position = 'relative';
+            container.appendChild(handle);
+            
+            // 调整大小功能
+            handle.addEventListener('mousedown', initResize);
+            
+            function initResize(e) {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startWidth = parseInt(document.defaultView.getComputedStyle(img).width, 10);
+                const startHeight = parseInt(document.defaultView.getComputedStyle(img).height, 10);
+                
+                function doResize(e) {
+                    img.style.width = (startWidth + e.clientX - startX) + 'px';
+                    img.style.height = (startHeight + e.clientY - startY) + 'px';
+                }
+                
+                function stopResize() {
+                    document.removeEventListener('mousemove', doResize, false);
+                    document.removeEventListener('mouseup', stopResize, false);
+                }
+                
+                document.addEventListener('mousemove', doResize, false);
+                document.addEventListener('mouseup', stopResize, false);
+            }
+        }
+        
+        // 生成日历
+        function generateCalendar() {
+            const calendarBody = document.getElementById('calendar-body');
+            calendarBody.innerHTML = '';
+            
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            // 当月第一天
+            const firstDay = new Date(year, month, 1);
+            // 当月最后一天
+            const lastDay = new Date(year, month + 1, 0);
+            // 当月第一天是周几（0为周日）
+            const firstDayOfWeek = firstDay.getDay();
+            // 当月总天数
+            const daysInMonth = lastDay.getDate();
+            
+            // 创建日历表格
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                const row = document.createElement('tr');
+                
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('td');
+                    
+                    if (i === 0 && j < firstDayOfWeek) {
+                        // 上个月的日子
+                        const prevMonthDays = new Date(year, month, 0).getDate();
+                        const prevDate = prevMonthDays - firstDayOfWeek + j + 1;
+                        cell.textContent = prevDate;
+                        cell.classList.add('prev-month');
+                    } else if (date > daysInMonth) {
+                        // 下个月的日子
+                        cell.textContent = date - daysInMonth;
+                        cell.classList.add('next-month');
+                        date++;
+                    } else {
+                        // 当月的日子
+                        cell.textContent = date;
+                        
+                        // 如果是今天
+                        if (date === now.getDate() && month === now.getMonth() && year === now.getFullYear()) {
+                            cell.classList.add('today');
+                        }
+                        
+                        // 检查这一天是否有笔记
+                        const noteDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                        const hasNote = notes.some(note => note.date === noteDate);
+                        
+                        if (hasNote) {
+                            cell.classList.add('has-note');
+                        }
+                        
+                        date++;
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                calendarBody.appendChild(row);
+                
+                // 如果所有日期都已添加，则停止
+                if (date > daysInMonth) {
+                    break;
+                }
+            }
+        }
+        
+        // 切换日历显示
+        function toggleCalendar() {
+            const calendarContainer = document.querySelector('.calendar-container');
+            const toggleIcon = document.querySelector('#calendar-toggle i');
+            
+            calendarContainer.classList.toggle('collapsed');
+            
+            if (calendarContainer.classList.contains('collapsed')) {
+                toggleIcon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            } else {
+                toggleIcon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+            }
+        }
+        
+        // 日历点击处理
+        function handleCalendarClick(e) {
+            if (e.target.tagName === 'TD') {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth();
+                const day = parseInt(e.target.textContent);
+                
+                // 检查是否是当前月的日期
+                if (!e.target.classList.contains('prev-month') && !e.target.classList.contains('next-month')) {
+                    const noteDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    
+                    // 查找当天的笔记
+                    const dailyNotes = notes.filter(note => note.date === noteDate);
+                    
+                    if (dailyNotes.length > 0) {
+                        // 如果有笔记，选择第一个
+                        selectNote(dailyNotes[0]);
+                    } else {
+                        // 创建新笔记
+                        const newNote = {
+                            id: Date.now(),
+                            title: `${year}年${month + 1}月${day}日笔记`,
+                            content: `<h2>${year}年${month + 1}月${day}日</h2><p>记录今天的想法...</p>`,
+                            createdAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            locked: false,
+                            password: "",
+                            date: noteDate
+                        };
+                        
+                        notes.unshift(newNote);
+                        renderNotesList();
+                        selectNote(newNote);
+                        simulateSave();
+                    }
+                }
+            }
+        }
+        
+        // 笔记加密功能
+        function showPasswordModal() {
+            document.getElementById('note-password').value = '';
+            document.getElementById('confirm-password').value = '';
+            passwordModal.style.display = 'flex';
+        }
+        
+        function closePasswordModal() {
+            passwordModal.style.display = 'none';
+        }
+        
+        function setNotePassword() {
+            const password = document.getElementById('note-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (password !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            
+            if (password.length < 4) {
+                alert('密码长度至少为4位');
+                return;
+            }
+            
+            currentNote.locked = true;
+            currentNote.password = CryptoJS.SHA256(password).toString();
+            closePasswordModal();
+            renderNotesList();
+            alert('笔记已加密');
+        }
+        
+        function showUnlockModal() {
+            document.getElementById('unlock-password').value = '';
+            unlockModal.style.display = 'flex';
+        }
+        
+        function closeUnlockModal() {
+            unlockModal.style.display = 'none';
+        }
+        
+        function unlockNote() {
+            const password = document.getElementById('unlock-password').value;
+            const hashedPassword = CryptoJS.SHA256(password).toString();
+            
+            if (hashedPassword === currentNote.password) {
+                currentNote.locked = false;
+                closeUnlockModal();
+                editor.innerHTML = currentNote.content;
+                alert('笔记已解锁');
+            } else {
+                alert('密码错误，请重试');
+            }
+        }
+        
+        // 导出功能
+        function showExportModal() {
+            exportModal.style.display = 'flex';
+        }
+        
+        function closeExportModal() {
+            exportModal.style.display = 'none';
+        }
+        
+        function exportToPDF() {
+            const content = editor.innerHTML;
+            const title = currentNote.title;
+            
+            const opt = {
+                margin: 10,
+                filename: `${title}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.style.padding = '20px';
+            tempDiv.innerHTML = `
+                <h1 style="text-align:center; margin-bottom:30px;">${title}</h1>
+                <div>${content}</div>
+                <div style="margin-top:50px; text-align:right; font-size:12px; color:#666;">
+                    导出自斜记本 - ${new Date().toLocaleDateString()}
+                </div>
+            `;
+            
+            html2pdf()
+                .set(opt)
+                .from(tempDiv)
+                .save();
+            
+            closeExportModal();
+        }
+        
+        function exportToWord() {
+            const content = editor.innerHTML;
+            const title = currentNote.title;
+            
+            // 创建一个临时div来保存内容
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 创建Blob对象
+            const blob = new Blob([`
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+                      xmlns:w="urn:schemas-microsoft-com:office:word" 
+                      xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                </head>
+                <body>
+                    <h1>${title}</h1>
+                    ${content}
+                    <p style="margin-top:50px; text-align:right; font-size:12px; color:#666;">
+                        导出自斜记本 - ${new Date().toLocaleDateString()}
+                    </p>
+                </body>
+                </html>
+            `], { type: 'application/msword' });
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.doc`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeExportModal();
+        }
+        
+        function exportToHTML() {
+            const content = editor.innerHTML;
+            const title = currentNote.title;
+            
+            const blob = new Blob([`
+                <!DOCTYPE html>
+                <html lang="zh-CN">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+                        h1, h2, h3 { color: #333; }
+                        img { max-width: 100%; height: auto; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${title}</h1>
+                    <div>${content}</div>
+                    <div style="margin-top:50px; text-align:right; font-size:12px; color:#666;">
+                        导出自斜记本 - ${new Date().toLocaleDateString()}
+                    </div>
+                </body>
+                </html>
+            `], { type: 'text/html' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.html`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeExportModal();
+        }
+        
+        function exportToTXT() {
+            const content = editor.innerText;
+            const title = currentNote.title;
+            
+            const blob = new Blob([title + '\n\n' + content], { type: 'text/plain' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeExportModal();
+        }
+        
+        function exportToMD() {
+            const content = editor.innerHTML;
+            const title = currentNote.title;
+            
+            // 使用turndown将HTML转换为Markdown
+            const turndownService = new TurndownService();
+            const markdown = turndownService.turndown(content);
+            
+            const blob = new Blob([`# ${title}\n\n${markdown}`], { type: 'text/markdown' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.md`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeExportModal();
+        }
+        
+        // 分享功能
+        function showShareModal() {
+            document.getElementById('share-title').value = currentNote.title;
+            document.getElementById('share-link').textContent = generateShareLink();
+            shareModal.style.display = 'flex';
+        }
+        
+        function closeShareModal() {
+            shareModal.style.display = 'none';
+        }
+        
+        function generateShareLink() {
+            // 在实际应用中，这里会生成一个真实的分享链接
+            // 此处仅为演示
+            const randomId = Math.random().toString(36).substring(2, 10);
+            return `https://slantnote.com/share/${randomId}`;
+        }
+        
+        function copyShareLink() {
+            const shareLink = document.getElementById('share-link');
+            const textArea = document.createElement('textarea');
+            textArea.value = shareLink.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // 显示复制成功消息
+            const copyBtn = document.getElementById('copy-link');
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check"></i>';
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+            }, 2000);
+        }
+        
+        // 初始化应用
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
